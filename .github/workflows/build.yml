@@ -1,12 +1,10 @@
-name: Build HuskSync
+name: Build HuskSync Corrected
 
-# 触发条件：当推送到 master 分支或发起 Pull Request 时触发
 on:
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-  # 允许手动在 Actions 页面触发
   workflow_dispatch:
 
 jobs:
@@ -14,34 +12,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. 检出仓库代码
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. 设置 Java 环境 (JDK 21)
+    # HuskSync 文档明确要求 Java 21
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         java-version: '21'
         distribution: 'temurin'
-        cache: 'gradle' # 开启 Gradle 缓存以加快构建速度
+        cache: 'gradle'
 
-    # 3. 赋予 gradlew 执行权限 (防止权限不足的错误)
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    # 4. 执行 Gradle 构建
+    # 执行构建，并列出构建后的文件结构（方便在 Actions 日志中排查）
     - name: Build with Gradle
-      run: ./gradlew clean build
+      run: |
+        ./gradlew clean build
+        echo "=== Listing jar files found ==="
+        find . -name "*.jar"
 
-    # 5. 上传构建好的 Jar 包作为 Artifact
-    # Gradle 默认输出目录通常是 build/libs
+    # 上传构建产物
+    # 这里我们配置了多个路径，确保无论它生成在哪里都能被打包
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: HuskSync-Jars
-        path: build/libs/*.jar
-        # 如果项目配置了输出到 target 目录（README 中曾有提及），可以使用以下路径：
-        # path: |
-        #   build/libs/*.jar
-        #   target/*.jar
+        path: |
+          target/*.jar
+          */build/libs/*.jar
+          !**/build/libs/*-sources.jar
+          !**/build/libs/*-javadoc.jar
+          !**/build/libs/*-dev.jar
